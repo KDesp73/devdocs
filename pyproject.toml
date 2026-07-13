@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools>=68.0", "setuptools-scm>=8.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "docs-service"
+version = "0.1.0"
+description = "A lightweight documentation server that renders Markdown files as a styled website."
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn>=0.32",
+    "markdown>=3.7",
+    "pygments>=2.18",
+    "pyyaml>=6.0",
+]
+
+[project.scripts]
+docs-service = "app.cli:main"

@@ -1,0 +1,25 @@
+# docs-service configuration
+# Place this file in the project root (alongside app/).
+
+title: "Application"
+tagline: "My app"
+version: "0.1.0"
+author: ""
+
+# docs_dir: "docs"  # default: docs/
+
+github_repo: "LioncodeYourITPeople/GeoTwin-ELBG"
+github_branch: "main"
+
+# Directories and file patterns to exclude from doc discovery.
+# Supports fnmatch-style glob patterns.
+ignore:
+  - ".git"
+  - ".git/**"
+  - "__pycache__"
+  - "__pycache__/**"
+  - "node_modules"
+  - "node_modules/**"
+  - ".venv"
+  - ".venv/**"
+  - "*.pyc"

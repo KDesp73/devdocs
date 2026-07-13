@@ -6,17 +6,23 @@ from fastapi.responses import HTMLResponse
 
 import markdown
 
-DOCS_DIR = Path(__file__).resolve().parent.parent.parent
-GITHUB_REPO = "LioncodeYourITPeople/GeoTwin-ELBG"
-GITHUB_BRANCH = "main"
+from app.config import get_config
 
-app = FastAPI(title="GeoTwin Docs", version="0.1.0")
+cfg = get_config()
+DOCS_DIR = cfg.docs_path
+GITHUB_REPO = cfg.github_repo
+GITHUB_BRANCH = cfg.github_branch
+
+app = FastAPI(title=f"{cfg.title} Docs", version=cfg.version)
 
 
 def _discover_docs() -> dict[str, Path]:
     files: dict[str, Path] = {}
     for md_file in sorted(DOCS_DIR.rglob("*.md")):
         rel = md_file.relative_to(DOCS_DIR)
+        rel_str = str(rel)
+        if cfg.is_ignored(rel_str):
+            continue
         url_path = str(rel.with_suffix(""))
         files[url_path] = md_file
     return files
@@ -67,7 +73,7 @@ HTML_LAYOUT = """\
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{title} — GeoTwin Docs</title>
+<title>{title} — {site_name} Docs</title>
 <style>
   :root {{
     --slate-50: #f8fafc;
@@ -539,8 +545,8 @@ HTML_LAYOUT = """\
 </head>
 <body>
 <div class="top-bar">
-  <h1><a href="/"><span>GeoTwin</span> Docs</a></h1>
-  <span class="tagline">ELBG Pilot</span>
+  <h1><a href="/"><span>{site_name}</span> Docs</a></h1>
+  <span class="tagline">{tagline}</span>
 </div>
 <div class="wrapper">
 <nav>
@@ -815,6 +821,8 @@ async def index():
     content = "<h1>Documentation</h1>\n" + "\n".join(sections)
     html = HTML_LAYOUT.format(
         title="Documentation",
+        site_name=cfg.title,
+        tagline=cfg.tagline,
         content=content,
         breadcrumbs="",
         edit_link="",
@@ -836,6 +844,8 @@ async def render_doc(path: str):
     title = h1_match.group(1) if h1_match else path.split("/")[-1]
     html = HTML_LAYOUT.format(
         title=title,
+        site_name=cfg.title,
+        tagline=cfg.tagline,
         content=body,
         breadcrumbs=_build_breadcrumbs(path),
         edit_link=_build_edit_link(path),
