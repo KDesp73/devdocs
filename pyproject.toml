@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "devdocs"
-version = "0.1.0"
+version = "1.0.0"
 description = "A lightweight documentation server that renders Markdown files as a styled website."
 requires-python = ">=3.12"
 dependencies = [
