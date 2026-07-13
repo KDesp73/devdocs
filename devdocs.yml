@@ -8,7 +8,7 @@ author: ""
 
 # docs_dir: "docs"  # default: docs/
 
-github_repo: "LioncodeYourITPeople/GeoTwin-ELBG"
+github_repo: "user/repo"
 github_branch: "main"
 
 # Directories and file patterns to exclude from doc discovery.
