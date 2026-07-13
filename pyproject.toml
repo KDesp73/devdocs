@@ -3,7 +3,7 @@ requires = ["setuptools>=68.0", "setuptools-scm>=8.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "docs-service"
+name = "devdocs"
 version = "0.1.0"
 description = "A lightweight documentation server that renders Markdown files as a styled website."
 requires-python = ">=3.12"
@@ -16,4 +16,4 @@ dependencies = [
 ]
 
 [project.scripts]
-docs-service = "app.cli:main"
+devdocs = "app.cli:main"

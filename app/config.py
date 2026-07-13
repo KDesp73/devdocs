@@ -6,7 +6,7 @@ from pathlib import Path
 
 import yaml
 
-CONFIG_FILENAMES = ("docs-service.yml", "docs-service.yaml", "docs-service.json")
+CONFIG_FILENAMES = ("devdocs.yml", "devdocs.yaml", "devdocs.json")
 
 _DEFAULT_IGNORE = [
     ".git",

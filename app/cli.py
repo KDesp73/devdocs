@@ -7,7 +7,7 @@ from pathlib import Path
 
 def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(
-        prog="docs-service",
+        prog="devdocs",
         description="Start the documentation server.",
     )
     parser.add_argument(
@@ -19,7 +19,7 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument(
         "-c", "--config",
         default=None,
-        help="Path to a docs-service.yml config file.",
+        help="Path to a devdocs.yml config file.",
     )
     parser.add_argument(
         "-H", "--host",

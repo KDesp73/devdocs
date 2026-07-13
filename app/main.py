@@ -187,6 +187,73 @@ HTML_LAYOUT = """\
     font-weight: 500;
   }}
 
+  /* ---- nav folder tree ---- */
+  .nav-folder {{
+    user-select: none;
+  }}
+  .nav-folder-toggle {{
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.45rem 1.25rem;
+    cursor: pointer;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--slate-700);
+    transition: background 0.12s, color 0.12s;
+  }}
+  .nav-folder-toggle:hover {{
+    background: var(--blue-50);
+    color: var(--blue-700);
+  }}
+  .nav-folder-toggle .folder-chevron {{
+    transition: transform 0.15s ease;
+    flex-shrink: 0;
+    opacity: 0.5;
+  }}
+  .nav-folder.open > .nav-folder-toggle .folder-chevron {{
+    transform: rotate(90deg);
+  }}
+  .nav-folder-toggle .folder-icon {{
+    flex-shrink: 0;
+    opacity: 0.7;
+  }}
+  .nav-folder-toggle span {{
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }}
+  .nav-folder-items {{
+    display: none;
+  }}
+  .nav-folder-items.open {{
+    display: block;
+  }}
+  .nav-folder-items .nav-folder-toggle {{
+    padding-left: 2.25rem;
+  }}
+  .nav-folder-items .nav-folder-items .nav-folder-toggle {{
+    padding-left: 3.25rem;
+  }}
+  .nav-folder-items .nav-folder-items .nav-folder-items .nav-folder-toggle {{
+    padding-left: 4.25rem;
+  }}
+  .nav-folder-items .nav-folder-items .nav-folder-items .nav-folder-items .nav-folder-toggle {{
+    padding-left: 5.25rem;
+  }}
+  .nav-folder-items > a {{
+    padding-left: 2.25rem;
+  }}
+  .nav-folder-items .nav-folder-items > a {{
+    padding-left: 3.25rem;
+  }}
+  .nav-folder-items .nav-folder-items .nav-folder-items > a {{
+    padding-left: 4.25rem;
+  }}
+  .nav-folder-items .nav-folder-items .nav-folder-items .nav-folder-items > a {{
+    padding-left: 5.25rem;
+  }}
+
   /* ---- main ---- */
   .content {{
     flex: 1;
@@ -722,6 +789,14 @@ HTML_LAYOUT = """\
   }});
 }})();
 </script>
+<script>
+function toggleFolder(el) {{
+  const folder = el.closest(".nav-folder");
+  const items = el.nextElementSibling;
+  folder.classList.toggle("open");
+  items.classList.toggle("open");
+}}
+</script>
 </body>
 </html>"""
 
@@ -742,27 +817,68 @@ def _build_breadcrumbs(path: str) -> str:
     return crumbs
 
 
-def _build_nav(current_path: str | None) -> str:
+def _build_nav_tree(current_path: str | None) -> str:
+    """Build a nested tree of folder and file nodes from discovered docs."""
     docs = _discover_docs()
-    groups: dict[str, list[tuple[str, str]]] = {}
+
+    tree: dict = {}
     for url_path in docs:
         parts = url_path.split("/")
-        if len(parts) == 1:
-            groups.setdefault("", []).append((url_path, parts[-1]))
-        else:
-            group = parts[0]
-            groups.setdefault(group, []).append((url_path, "/".join(parts[1:])))
+        node = tree
+        for part in parts[:-1]:
+            node = node.setdefault(part, {})
+        node[parts[-1]] = url_path
 
-    lines: list[str] = []
-    for key in sorted(groups, key=lambda k: (k != "", k)):
-        items = sorted(groups[key], key=lambda x: x[1].lower())
-        if key:
-            label = key.replace("-", " ").replace("_", " ").title()
-            lines.append(f'<div class="nav-label">{label}</div>')
-        for url_path, display in items:
-            active = ' class="active"' if current_path == url_path else ""
+    def _is_active(url_path: str) -> bool:
+        return current_path == url_path
+
+    def _render(node: dict, depth: int = 0) -> list[str]:
+        folders = []
+        files = []
+        for key in sorted(node):
+            val = node[key]
+            if isinstance(val, dict):
+                folders.append((key, val))
+            else:
+                files.append((key, val))
+
+        lines: list[str] = []
+        for name, children in folders:
+            child_prefixes = set()
+            for child_val in children.values():
+                if isinstance(child_val, str):
+                    child_prefixes.add(child_val.rsplit("/", 1)[0] + "/" if "/" in child_val else "")
+            if len(child_prefixes) == 1:
+                folder_prefix = child_prefixes.pop()
+            else:
+                folder_prefix = ""
+            is_open = current_path is not None and folder_prefix and current_path.startswith(folder_prefix)
+            label = name.replace("-", " ").replace("_", " ").title()
+            items_html = "\n".join(_render(children, depth + 1))
+            open_cls = " open" if is_open else ""
+            lines.append(
+                f'<div class="nav-folder{open_cls}">'
+                f'<div class="nav-folder-toggle" onclick="toggleFolder(this)">'
+                f'<svg class="folder-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" '
+                f'stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'
+                f'<polyline points="9 18 15 12 9 6"/></svg>'
+                f'<svg class="folder-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" '
+                f'stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'
+                f'<path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>'
+                f'<span>{label}</span>'
+                f'</div>'
+                f'<div class="nav-folder-items{open_cls}">'
+                f'{items_html}'
+                f'</div>'
+                f'</div>'
+            )
+        for name, url_path in sorted(files, key=lambda x: x[0].lower()):
+            active = ' class="active"' if _is_active(url_path) else ""
+            display = name.replace("-", " ").replace("_", " ").title()
             lines.append(f'<a href="/{url_path}"{active}>{display}</a>')
-    return "\n".join(lines)
+        return lines
+
+    return "\n".join(_render(tree))
 
 
 def _build_edit_link(path: str) -> str:
@@ -826,7 +942,7 @@ async def index():
         content=content,
         breadcrumbs="",
         edit_link="",
-        nav_links=_build_nav(None),
+        nav_links=_build_nav_tree(None),
         root_active="active",
     )
     return HTMLResponse(html)
@@ -849,7 +965,7 @@ async def render_doc(path: str):
         content=body,
         breadcrumbs=_build_breadcrumbs(path),
         edit_link=_build_edit_link(path),
-        nav_links=_build_nav(path),
+        nav_links=_build_nav_tree(path),
         root_active="",
     )
     return HTMLResponse(html)
