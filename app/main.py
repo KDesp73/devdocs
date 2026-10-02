@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import html
+import warnings
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -48,9 +49,6 @@ app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
 
 # Hot reload support for config file
-import os
-import time
-
 _config_path = None
 _config_mtime = 0
 
@@ -84,9 +82,9 @@ def _reload_if_config_changed() -> None:
             set_site(new_site)
             _config_path = cfg_path
             _config_mtime = mtime
-        except Exception:
-            # Don't crash if reload fails
-            pass
+        except Exception as exc:
+            # Keep serving the previously loaded config rather than crashing.
+            warnings.warn(f"devdocs: could not reload {cfg_path}: {exc}", stacklevel=2)
 
 
 @dataclass(frozen=True)
