@@ -1,0 +1,103 @@
+{
+  "rows_total": 360,
+  "rows_ok": 265,
+  "personas": [
+    "foodie",
+    "historian",
+    "teen_explorer"
+  ],
+  "unique_sites": 47,
+  "top5_popular_share": 0.227,
+  "long_tail_share": 0.773,
+  "mean_pairwise_stop_distance_m": 762.2,
+  "top_sites": [
+    [
+      "node/12320339909",
+      63
+    ],
+    [
+      "node/12314213820",
+      63
+    ],
+    [
+      "Δήμος Ζούλιας",
+      59
+    ],
+    [
+      "Μαργαρίτα Μπασδέκη",
+      58
+    ],
+    [
+      "Αρχοντικό Κασσαβέτη",
+      58
+    ]
+  ],
+  "per_persona_top": {
+    "historian": [
+      [
+        "Art House Paschalis",
+        44
+      ],
+      [
+        "Ιστορικό και Λαογραφικό Μουσείο Πορταριάς",
+        33
+      ],
+      [
+        "Museum of Folk Art",
+        30
+      ],
+      [
+        "Βυζαντινό Μουσείο",
+        30
+      ],
+      [
+        "node/12320339909",
+        30
+      ]
+    ],
+    "foodie": [
+      [
+        "Philos",
+        33
+      ],
+      [
+        "Mansion & Home Margaritis",
+        33
+      ],
+      [
+        "node/10129936456",
+        30
+      ],
+      [
+        "node/10129943655",
+        30
+      ],
+      [
+        "Xrysanthi's dream house",
+        28
+      ]
+    ],
+    "teen_explorer": [
+      [
+        "node/10129877385",
+        45
+      ],
+      [
+        "node/3657571591",
+        33
+      ],
+      [
+        "node/12320339909",
+        33
+      ],
+      [
+        "node/12314213820",
+        33
+      ],
+      [
+        "Δήμος Ζούλιας",
+        32
+      ]
+    ]
+  }
+}

@@ -1,5 +1,6 @@
 # devdocs configuration
 # Place this file in the project root (alongside app/).
+# Every key is optional; the values below are the defaults.
 
 title: "Application"
 tagline: "My app"
@@ -8,8 +9,37 @@ author: ""
 
 # docs_dir: "docs"  # default: docs/
 
-github_repo: "user/repo"
-github_branch: "main"
+# --- GitHub "Edit on GitHub" links -------------------------------------------
+# Leave both empty to detect them from the Git checkout: the current branch
+# and the GitHub `origin` remote. They are read once at startup, so a restart
+# picks up a newly checked out branch.
+github_repo: ""    # e.g. "acme/widgets" (auto-detected from origin)
+github_branch: ""  # e.g. "main" (auto-detected with `git rev-parse --abbrev-ref HEAD`)
+
+# --- Appearance ----------------------------------------------------------------
+# original (default), midnight, emerald, sunset, grape, mono, auto
+# "auto" follows the operating system's light/dark preference.
+theme: emerald 
+
+# --- Published file types ------------------------------------------------------
+# Documents become pages, images are served as static assets, and anything
+# unlisted is neither published nor linked. Accepts groups, extensions, or
+# "all" (Markdown + images + JSON/YAML/TOML/XML + text + code).
+#
+#   md      Markdown (.md, .markdown)
+#   images  .png .jpg .jpeg .gif .svg .webp .bmp .ico .avif
+#   json    .json .jsonc .json5
+#   yaml    .yaml .yml
+#   toml    .toml
+#   xml     .xml .xsd .xsl .plist .svgz
+#   text    .txt .rst .adoc
+#   code    every lexer extension Pygments knows about
+#   all     all of the above
+#   .rs     a single explicit extension
+file_types:
+  - md
+  - images
+  - json
 
 # Directories and file patterns to exclude from doc discovery.
 # Supports fnmatch-style glob patterns.

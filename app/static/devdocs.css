@@ -1,0 +1,730 @@
+/* devdocs — layout and component styles.
+ *
+ * Colours are never hard coded here: every palette is provided by the
+ * per-theme custom property block injected by app/themes.py. The
+ * `data-theme` attribute is set on <html> by the server.
+ */
+
+:root {
+  --sans: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen,
+    Ubuntu, Cantarell, sans-serif;
+  --mono: "SF Mono", "Fira Code", "Fira Mono", Menlo, Consolas, monospace;
+  --topbar-height: 56px;
+  --sidebar-width: 270px;
+  --content-width: 900px;
+  --radius: 10px;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: var(--sans);
+  font-size: 16px;
+  line-height: 1.7;
+  color: var(--text);
+  background: var(--bg);
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  -webkit-text-size-adjust: 100%;
+}
+
+/* ---- header ---- */
+.top-bar {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  height: var(--topbar-height);
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0 1.5rem;
+  position: sticky;
+  top: 0;
+  z-index: 50;
+}
+.top-bar h1 {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--text-strong);
+  letter-spacing: -0.01em;
+}
+.top-bar h1 a {
+  text-decoration: none;
+  color: inherit;
+}
+.top-bar h1 span {
+  color: var(--accent);
+}
+.top-bar .tagline {
+  margin-left: 1rem;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  font-weight: 400;
+}
+.top-bar .spacer {
+  flex: 1;
+}
+.top-bar .branch {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 0.15rem 0.6rem;
+  max-width: 14rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.top-bar .branch::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  flex-shrink: 0;
+}
+
+/* ---- wrapper (sidebar + main) ---- */
+.wrapper {
+  display: flex;
+  flex: 1;
+  align-items: flex-start;
+}
+
+/* ---- sidebar ---- */
+nav {
+  width: var(--sidebar-width);
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  padding: 1rem 0 2rem;
+  position: sticky;
+  top: var(--topbar-height);
+  height: calc(100vh - var(--topbar-height));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  flex-shrink: 0;
+}
+nav .nav-label {
+  padding: 0.6rem 1.25rem 0.25rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+}
+nav a,
+.nav-folder-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.45rem 1.25rem;
+  color: var(--text);
+  text-decoration: none;
+  font-size: 0.875rem;
+  border-left: 2px solid transparent;
+  transition: background 0.12s, color 0.12s, border-color 0.12s;
+  cursor: pointer;
+}
+nav a:hover,
+.nav-folder-toggle:hover {
+  background: var(--accent-soft);
+  color: var(--accent-text);
+}
+nav a.active {
+  background: var(--accent-soft);
+  color: var(--accent-text);
+  border-left-color: var(--accent);
+  font-weight: 500;
+}
+nav a:focus-visible,
+.nav-folder-toggle:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+/* ---- nav folder tree ---- */
+.nav-folder {
+  user-select: none;
+}
+.nav-folder-toggle {
+  font-weight: 600;
+  color: var(--text-strong);
+  gap: 0.35rem;
+}
+.nav-folder-toggle .folder-chevron {
+  transition: transform 0.15s ease;
+  flex-shrink: 0;
+  opacity: 0.5;
+}
+.nav-folder.open > .nav-folder-toggle .folder-chevron {
+  transform: rotate(90deg);
+}
+.nav-folder-toggle .folder-icon {
+  flex-shrink: 0;
+  opacity: 0.7;
+}
+.nav-folder-toggle .label,
+nav a .label {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.nav-folder-toggle .label {
+  flex: 1;
+}
+/* Indentation compounds with nesting depth, so folders can nest arbitrarily. */
+.nav-folder-items {
+  display: none;
+  margin-left: 1.1rem;
+  border-left: 1px solid var(--border);
+}
+.nav-folder-items.open {
+  display: block;
+}
+.nav-folder-items a,
+.nav-folder-items .nav-folder-toggle {
+  padding-left: 0.75rem;
+}
+.nav-folder-toggle .file-icon {
+  flex-shrink: 0;
+  opacity: 0.55;
+}
+
+/* ---- main ---- */
+.content {
+  flex: 1;
+  max-width: var(--content-width);
+  margin: 0 auto;
+  padding: 2rem 2.5rem 4rem;
+  min-width: 0;
+}
+
+/* breadcrumbs */
+.breadcrumbs {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin-bottom: 1.25rem;
+}
+.breadcrumbs a {
+  color: var(--text);
+  text-decoration: none;
+}
+.breadcrumbs a:hover {
+  color: var(--accent-strong);
+}
+.breadcrumbs .sep {
+  opacity: 0.6;
+}
+
+/* doc card */
+.doc-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 2rem 2.5rem;
+  box-shadow: 0 1px 3px var(--shadow);
+}
+
+/* headings */
+.doc-card h1 {
+  font-size: 1.85rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin-bottom: 1.5rem;
+  color: var(--text-strong);
+  overflow-wrap: break-word;
+}
+.doc-card h2 {
+  font-size: 1.35rem;
+  font-weight: 600;
+  margin-top: 2rem;
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.35rem;
+  border-bottom: 1px solid var(--border);
+  color: var(--text-strong);
+}
+.doc-card h3 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin-top: 1.5rem;
+  margin-bottom: 0.5rem;
+  color: var(--text-strong);
+}
+.doc-card h4 {
+  font-size: 1rem;
+  font-weight: 600;
+  margin-top: 1.25rem;
+  margin-bottom: 0.5rem;
+  color: var(--text);
+}
+
+.doc-card p {
+  margin-bottom: 1rem;
+}
+.doc-card ul,
+.doc-card ol {
+  margin-bottom: 1rem;
+  padding-left: 1.5rem;
+}
+.doc-card li {
+  margin-bottom: 0.3rem;
+}
+.doc-card li > ul,
+.doc-card li > ol {
+  margin-bottom: 0;
+}
+
+/* tables */
+.doc-card table {
+  border-collapse: collapse;
+  width: 100%;
+  margin-bottom: 1.25rem;
+  font-size: 0.9rem;
+}
+.doc-card th,
+.doc-card td {
+  border: 1px solid var(--border);
+  padding: 0.55rem 0.85rem;
+  text-align: left;
+  vertical-align: top;
+}
+.doc-card th {
+  background: var(--surface-2);
+  font-weight: 600;
+  color: var(--text-strong);
+}
+.doc-card tr:nth-child(even) td {
+  background: var(--surface-2);
+}
+
+/* inline code */
+.doc-card code {
+  background: var(--inline-code-bg);
+  color: var(--inline-code-text);
+  padding: 0.15rem 0.4rem;
+  border-radius: 4px;
+  font-size: 0.85em;
+  font-family: var(--mono);
+  overflow-wrap: break-word;
+}
+
+/* code blocks */
+.doc-card pre {
+  background: var(--code-bg);
+  color: var(--code-text);
+  border-radius: 8px;
+  padding: 1.1rem 1.25rem;
+  overflow-x: auto;
+  margin-bottom: 1.25rem;
+  font-size: 0.85rem;
+  line-height: 1.55;
+  font-family: var(--mono);
+  tab-size: 4;
+}
+.doc-card pre code {
+  background: transparent;
+  color: inherit;
+  padding: 0;
+  border-radius: 0;
+  font-size: inherit;
+}
+.doc-card .codehilite {
+  margin-bottom: 1.25rem;
+}
+.doc-card .codehilite pre {
+  margin: 0;
+}
+.doc-card .codehilitetable {
+  display: flex;
+  align-items: stretch;
+  margin-bottom: 1.25rem;
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--code-bg);
+}
+.doc-card .codehilitetable td {
+  vertical-align: top;
+  padding: 0;
+  border: 0;
+}
+.doc-card .codehilitetable td.linenos {
+  width: 1%;
+  white-space: nowrap;
+  user-select: none;
+  border-right: 1px solid var(--border);
+  background: var(--code-bg);
+}
+.doc-card .codehilitetable td.linenos pre {
+  margin: 0;
+  padding: 1.1rem 0.75rem;
+  background: transparent;
+  color: var(--text-muted);
+  text-align: right;
+  overflow: hidden;
+}
+.doc-card .codehilitetable td.code {
+  width: 100%;
+  min-width: 0;
+}
+
+/* blockquote */
+.doc-card blockquote {
+  border-left: 4px solid var(--accent);
+  padding: 0.65rem 1.1rem;
+  margin-bottom: 1rem;
+  background: var(--accent-soft);
+  border-radius: 0 6px 6px 0;
+  color: var(--text);
+}
+.doc-card blockquote p:last-child {
+  margin-bottom: 0;
+}
+
+.doc-card a {
+  color: var(--accent-strong);
+  text-decoration: none;
+}
+.doc-card a:hover {
+  text-decoration: underline;
+}
+.doc-card img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  margin: 0.5rem 0;
+}
+.doc-card hr {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 1.5rem 0;
+}
+.doc-card figure {
+  margin: 1.5rem 0;
+}
+.doc-card figcaption {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  text-align: center;
+  margin-top: 0.5rem;
+}
+
+/* page meta line for non-markdown documents */
+.doc-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  margin: -1rem 0 1.5rem;
+  padding-bottom: 1.25rem;
+  border-bottom: 1px solid var(--border);
+}
+.doc-meta .path {
+  font-family: var(--mono);
+  overflow-wrap: anywhere;
+}
+.doc-meta .tag {
+  background: var(--accent-soft);
+  color: var(--accent-text);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 0.05rem 0.55rem;
+  font-weight: 600;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.doc-meta .tag:hover {
+  text-decoration: none;
+  border-color: var(--accent);
+}
+.doc-note {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin: 0;
+  padding: 0.85rem 1.25rem;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+/* mermaid diagrams */
+.doc-card .mermaid {
+  margin: 1.25rem 0;
+  padding: 1rem;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: auto;
+  max-height: 80vh;
+  text-align: center;
+  cursor: zoom-in;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.doc-card .mermaid:hover {
+  border-color: var(--accent);
+  box-shadow: 0 2px 8px var(--shadow);
+}
+.doc-card .mermaid:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+/* Diagrams are sized by the client so they render at their natural size
+   instead of being shrunk to fit the column. */
+.doc-card .mermaid .mermaid-stage {
+  display: block;
+  width: max-content;
+  max-width: none;
+  margin: 0 auto;
+}
+.doc-card .mermaid svg {
+  display: block;
+  max-width: none !important;
+  max-height: none !important;
+  height: auto;
+  background: transparent !important;
+}
+.mermaid-hint {
+  display: block;
+  margin-top: 0.35rem;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  text-align: center;
+  pointer-events: none;
+  user-select: none;
+}
+.mermaid-loading {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  font-family: var(--mono);
+  white-space: pre-wrap;
+  text-align: left;
+}
+
+/* mermaid explorer dialog */
+.mermaid-dialog {
+  border: none;
+  border-radius: 12px;
+  padding: 0;
+  width: min(96vw, 1200px);
+  height: min(92vh, 900px);
+  max-width: none;
+  max-height: none;
+  margin: 0;
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: 0 25px 50px var(--shadow-strong);
+}
+.mermaid-dialog[open] {
+  display: flex;
+  flex-direction: column;
+}
+.mermaid-dialog::backdrop {
+  background: var(--overlay);
+}
+.mermaid-dialog-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.85rem 1.25rem;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface-2);
+  border-radius: 12px 12px 0 0;
+  flex-shrink: 0;
+}
+.mermaid-dialog-title {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-strong);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.mermaid-dialog-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-shrink: 0;
+}
+.mermaid-dialog-toolbar button {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  border-radius: 6px;
+  padding: 0.35rem 0.65rem;
+  font-size: 0.8rem;
+  font-family: inherit;
+  cursor: pointer;
+  line-height: 1.2;
+  min-width: 2.1rem;
+}
+.mermaid-dialog-toolbar button:hover {
+  border-color: var(--accent);
+  color: var(--accent-text);
+  background: var(--accent-soft);
+}
+.mermaid-dialog-toolbar .zoom-level {
+  font-family: var(--mono);
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  min-width: 3.4rem;
+  text-align: center;
+}
+.mermaid-dialog-close {
+  font-size: 1.4rem !important;
+}
+.mermaid-dialog-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.mermaid-dialog-viewport {
+  flex: 1;
+  overflow: hidden;
+  cursor: grab;
+  background: radial-gradient(circle at 1px 1px, var(--border) 1px, transparent 0);
+  background-size: 20px 20px;
+  background-color: var(--surface);
+  position: relative;
+  touch-action: none;
+}
+.mermaid-dialog-viewport.is-dragging {
+  cursor: grabbing;
+}
+.mermaid-dialog-canvas {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform-origin: center center;
+  will-change: transform;
+}
+.mermaid-dialog-canvas .mermaid {
+  margin: 0;
+  padding: 1.5rem;
+  border: none;
+  background: transparent;
+  cursor: inherit;
+  max-height: none;
+  overflow: visible;
+}
+.mermaid-dialog-canvas .mermaid .mermaid-stage {
+  display: block;
+  width: max-content;
+  max-width: none;
+  margin: 0;
+}
+.mermaid-dialog-canvas .mermaid svg {
+  display: block;
+  max-width: none !important;
+  max-height: none !important;
+  background: transparent !important;
+}
+.mermaid-dialog-footer {
+  padding: 0.5rem 1.25rem;
+  border-top: 1px solid var(--border);
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  background: var(--surface-2);
+  border-radius: 0 0 12px 12px;
+  flex-shrink: 0;
+}
+
+/* page footer links */
+.edit-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-top: 2rem;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  text-decoration: none;
+}
+.edit-link:hover {
+  color: var(--accent-strong);
+}
+
+/* ---- index page ---- */
+.index-section {
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  margin: 1.5rem 0 0.6rem;
+}
+.index-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+.index-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 1rem 1.25rem;
+  display: block;
+  text-decoration: none;
+  color: inherit;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.index-card:hover {
+  border-color: var(--accent);
+  box-shadow: 0 2px 8px var(--shadow);
+}
+.index-card .title {
+  font-weight: 500;
+  font-size: 0.92rem;
+  color: var(--text-strong);
+}
+.index-card .path {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  margin-top: 0.15rem;
+  font-family: var(--mono);
+  overflow-wrap: anywhere;
+}
+
+.empty-state {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+@media (max-width: 720px) {
+  .content {
+    padding: 1.25rem 1rem 3rem;
+  }
+  .doc-card {
+    padding: 1.5rem 1.25rem;
+  }
+  nav {
+    width: 200px;
+  }
+}

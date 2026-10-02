@@ -1,11 +1,16 @@
 from __future__ import annotations
 
 import argparse
+import os
 import sys
 from pathlib import Path
 
+from app.config import configure, load_config
+from app.site import Site
+from app.themes import theme_names
 
-def main(argv: list[str] | None = None) -> None:
+
+def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="devdocs",
         description="Start the documentation server.",
@@ -14,12 +19,12 @@ def main(argv: list[str] | None = None) -> None:
         "root_dir",
         nargs="?",
         default=None,
-        help="Root directory containing Markdown docs (default: docs/).",
+        help="Root directory containing the docs (default: docs/ next to the config).",
     )
     parser.add_argument(
         "-c", "--config",
         default=None,
-        help="Path to a devdocs.yml config file.",
+        help="Path to a devdocs.yml config file (default: searched upwards from the CWD).",
     )
     parser.add_argument(
         "-H", "--host",
@@ -33,20 +38,59 @@ def main(argv: list[str] | None = None) -> None:
         help="Port to listen on (default: 8000).",
     )
     parser.add_argument(
+        "--theme",
+        default=None,
+        metavar="NAME",
+        help=f"Colour theme, one of: {', '.join(theme_names())} (default: from config).",
+    )
+    parser.add_argument(
+        "--type",
+        dest="types",
+        action="append",
+        metavar="TYPE",
+        help=(
+            "File type to publish, repeatable. Accepts a group (md, images, json, yaml, "
+            "toml, xml, text, code), an extension (.py) or 'all'."
+        ),
+    )
+    parser.add_argument(
         "--reload",
         action="store_true",
         help="Enable auto-reload for development.",
     )
-    args = parser.parse_args(argv)
+    return parser
 
-    from app.config import configure, load_config
+
+def main(argv: list[str] | None = None) -> None:
+    args = _build_parser().parse_args(argv)
 
     cfg = load_config(args.config)
-
     if args.root_dir is not None:
         cfg.docs_dir = str(Path(args.root_dir).expanduser().resolve())
-
+    if args.theme:
+        cfg.theme = args.theme
+    if args.types:
+        cfg.file_types = list(args.types)
     configure(cfg)
+
+    # Propagate the overrides so that ``--reload`` subprocesses, which import
+    # the app from scratch, see the same configuration.
+    if args.config:
+        os.environ["DEVDOCS_CONFIG"] = str(Path(args.config).expanduser().resolve())
+    else:
+        os.environ.setdefault("DEVDOCS_CONFIG", _discover_config_path())
+    if args.root_dir is not None:
+        os.environ["DEVDOCS_DOCS_DIR"] = cfg.docs_dir
+    if args.theme:
+        os.environ["DEVDOCS_THEME"] = args.theme
+    if args.types:
+        os.environ["DEVDOCS_FILE_TYPES"] = ",".join(args.types)
+
+    from app.site import build_site, set_site
+
+    info = build_site(cfg)
+    set_site(info)
+    _report(info)
 
     import uvicorn
 
@@ -56,6 +100,25 @@ def main(argv: list[str] | None = None) -> None:
         port=args.port,
         reload=args.reload,
     )
+
+
+def _discover_config_path() -> str:
+    from app.config import _find_config_file
+
+    found = _find_config_file()
+    return str(found) if found else ""
+
+
+def _report(info: Site) -> None:
+    types = ", ".join(sorted(info.types.extensions)) or "none"
+    if info.types.dynamic_code:
+        types += "+code"
+    lines = [
+        f"devdocs: serving {info.docs_dir}",
+        f"devdocs: theme {info.theme.name} · file types {types}",
+        f"devdocs: branch {info.branch}" + (f" · repo {info.repo}" if info.repo else " · no git remote"),
+    ]
+    print("\n".join(lines), file=sys.stderr)
 
 
 if __name__ == "__main__":

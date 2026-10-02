@@ -1,0 +1,15 @@
+{
+  "catalog_size": 40,
+  "recommendations_emitted": 20,
+  "catalog_coverage": 0.45,
+  "popularity_top10_share": 0.3,
+  "mean_category_diversity": 0.4,
+  "sample_metrics": {
+    "interest_precision_at_k": 1.0,
+    "profile_compliance": 1.0,
+    "category_diversity": 0.5,
+    "walk_feasibility": 1.0
+  },
+  "observational_note": "Thresholds are observational for \u03a03.2; soft flag if top-10 share >= 0.95",
+  "soft_pass_popularity": true
+}
