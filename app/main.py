@@ -11,7 +11,7 @@ from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
 
 from app import templates
-from app.config import get_config
+from app.config import get_config, reload_config
 from app.naming import prettify
 from app.render import (
     FileType,
@@ -24,7 +24,7 @@ from app.render import (
     render_document,
     theme_style_css,
 )
-from app.site import Site, site
+from app.site import Site, build_site, set_site, site
 from app.themes import theme_css
 
 STATIC_DIR = Path(__file__).parent / "static"
@@ -45,6 +45,48 @@ app = FastAPI(
     openapi_url=None,
 )
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+
+
+# Hot reload support for config file
+import os
+import time
+
+_config_path = None
+_config_mtime = 0
+
+
+def _get_config_path() -> Path | None:
+    from app.config import _find_config_file
+
+    found = _find_config_file()
+    return found
+
+
+def _reload_if_config_changed() -> None:
+    """Reload config if the config file has changed."""
+    global _config_path, _config_mtime
+    cfg_path = _get_config_path()
+    if cfg_path is None:
+        # No config file found, nothing to watch
+        _config_path = None
+        return
+
+    try:
+        mtime = cfg_path.stat().st_mtime
+    except OSError:
+        return
+
+    if _config_path != cfg_path or mtime != _config_mtime:
+        # Config changed, reload it
+        try:
+            new_cfg = reload_config()
+            new_site = build_site(new_cfg)
+            set_site(new_site)
+            _config_path = cfg_path
+            _config_mtime = mtime
+        except Exception:
+            # Don't crash if reload fails
+            pass
 
 
 @dataclass(frozen=True)
@@ -302,6 +344,7 @@ def _page(
 
 @app.get("/", response_class=HTMLResponse)
 async def index() -> HTMLResponse:
+    _reload_if_config_changed()
     current = site()
     documents = discover(current).documents
     return _page(
@@ -314,6 +357,7 @@ async def index() -> HTMLResponse:
 
 @app.get("/raw/{url:path}")
 async def raw_file(url: str) -> FileResponse:
+    _reload_if_config_changed()
     current = site()
     entry = discover(current).get(url.strip("/"))
     if entry is None:
@@ -327,6 +371,7 @@ async def raw_file(url: str) -> FileResponse:
 
 @app.get("/{url:path}", response_class=HTMLResponse)
 async def render(url: str):
+    _reload_if_config_changed()
     current = site()
     key = url.strip("/")
     found = discover(current)

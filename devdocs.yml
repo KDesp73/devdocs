@@ -19,7 +19,7 @@ github_branch: ""  # e.g. "main" (auto-detected with `git rev-parse --abbrev-ref
 # --- Appearance ----------------------------------------------------------------
 # original (default), midnight, emerald, sunset, grape, mono, auto
 # "auto" follows the operating system's light/dark preference.
-theme: emerald 
+theme: sunset 
 
 # --- Published file types ------------------------------------------------------
 # Documents become pages, images are served as static assets, and anything
@@ -40,6 +40,7 @@ file_types:
   - md
   - images
   - json
+  - code
 
 # Directories and file patterns to exclude from doc discovery.
 # Supports fnmatch-style glob patterns.

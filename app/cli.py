@@ -94,11 +94,27 @@ def main(argv: list[str] | None = None) -> None:
 
     import uvicorn
 
+    reload_dirs = None
+    if args.reload:
+        reload_dirs = []
+        # Add config file directory
+        cfg_path = os.environ.get("DEVDOCS_CONFIG", "")
+        if cfg_path:
+            reload_dirs.append(str(Path(cfg_path).parent))
+        # Also add cwd and docs dir as fallback
+        if not reload_dirs:
+            reload_dirs.append(str(Path.cwd()))
+        # Add docs dir
+        reload_dirs.append(cfg.docs_dir)
+        # Deduplicate
+        reload_dirs = list(dict.fromkeys(reload_dirs))
+
     uvicorn.run(
         "app.main:app",
         host=args.host,
         port=args.port,
         reload=args.reload,
+        reload_dirs=reload_dirs if args.reload else None,
     )
 
 

@@ -89,6 +89,13 @@ def configure(cfg: Config) -> None:
     _global_cfg = cfg
 
 
+def reload_config() -> Config:
+    """Reload configuration from disk, ignoring any cached value."""
+    global _global_cfg
+    _global_cfg = load_config()
+    return _global_cfg
+
+
 def get_config() -> Config:
     global _global_cfg
     if _global_cfg is None:
