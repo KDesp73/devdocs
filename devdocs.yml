@@ -7,7 +7,7 @@ tagline: "My app"
 version: "0.1.0"
 author: ""
 
-# docs_dir: "docs"  # default: docs/
+docs_dir: "docs-temp"  # default: docs/
 
 # --- GitHub "Edit on GitHub" links -------------------------------------------
 # Leave both empty to detect them from the Git checkout: the current branch
@@ -19,7 +19,7 @@ github_branch: ""  # e.g. "main" (auto-detected with `git rev-parse --abbrev-ref
 # --- Appearance ----------------------------------------------------------------
 # original (default), midnight, emerald, sunset, grape, mono, auto
 # "auto" follows the operating system's light/dark preference.
-theme: sunset 
+theme: midnight
 
 # --- Published file types ------------------------------------------------------
 # Documents become pages, images are served as static assets, and anything

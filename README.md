@@ -112,8 +112,9 @@ A single extension (`.rs`) can be listed on its own. Markdown pages are served
 without their extension (`/guides/setup`); other documents keep theirs
 (`/openapi.json`) and expose the untouched bytes at `/raw/<path>`.
 
-Images are the exception: they are served at their real path and stay out of the
-navigation tree, so linking `![diagram](./assets/flow.png)` just works.
+Images are the exception: they are served at their real path, so linking
+`![diagram](./assets/flow.png)` just works, and they get their own image icon in
+the tree rather than a rendered page.
 
 ### Environment variables
 

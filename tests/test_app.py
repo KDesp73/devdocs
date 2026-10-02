@@ -134,9 +134,7 @@ def test_unlisted_file_types_are_not_published(make_client, write) -> None:
     assert client.get("/secret.env").status_code == 404
 
 
-def test_images_are_served_but_not_navigated(
-    make_client, write, write_bytes, tiny_png
-) -> None:
+def test_images_are_served_and_navigated(make_client, write, write_bytes, tiny_png) -> None:
     write("index.md", "# Home\n")
     write_bytes("assets/logo.png", tiny_png)
     client = make_client(file_types=["md", "images"])
@@ -145,7 +143,22 @@ def test_images_are_served_but_not_navigated(
     assert response.headers["content-type"] == "image/png"
     assert response.content == tiny_png
     assert response.headers["x-content-type-options"] == "nosniff"
-    # assets stay out of the navigation tree
+    # images appear in the navigation tree, under their folder
+    body = client.get("/").text
+    assert 'href="/assets/logo.png"' in body
+    assert ">Logo</span>" in body
+    assert 'class="image-icon"' in body
+    # ...and still on the page it was linked from
+    assert 'href="/assets/logo.png"' in client.get("/index").text
+
+
+def test_images_stay_out_of_the_tree_when_unlisted(
+    make_client, write, write_bytes, tiny_png
+) -> None:
+    write("index.md", "# Home\n")
+    write_bytes("assets/logo.png", tiny_png)
+    client = make_client(file_types=["md"])
+    assert client.get("/assets/logo.png").status_code == 404
     assert 'href="/assets/logo.png"' not in client.get("/").text
 
 

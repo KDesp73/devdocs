@@ -200,7 +200,8 @@ nav a .label {
 .nav-folder-items .nav-folder-toggle {
   padding-left: 0.75rem;
 }
-.nav-folder-toggle .file-icon {
+.nav-folder-toggle .file-icon,
+.nav-folder-toggle .image-icon {
   flex-shrink: 0;
   opacity: 0.55;
 }

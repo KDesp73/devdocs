@@ -113,6 +113,15 @@ class Discovery:
     def get(self, url: str) -> Entry | None:
         return self.documents.get(url) or self.assets.get(url)
 
+    @property
+    def navigable(self) -> dict[str, Entry]:
+        """Documents and assets together: everything the site links to.
+
+        Assets keep their real URLs and are served verbatim, so listing one in
+        the tree only adds a link that lands on the image itself.
+        """
+        return {**self.documents, **self.assets}
+
 
 def _url_for(rel: str, file_type: FileType) -> str:
     """Markdown pages get extension-less URLs; everything else keeps its name."""
@@ -164,6 +173,13 @@ _FILE_ICON = (
     '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>'
     '<polyline points="14 2 14 8 20 8"/></svg>'
 )
+_IMAGE_ICON = (
+    '<svg class="image-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" '
+    'stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'
+    '<rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>'
+    '<circle cx="8.5" cy="8.5" r="1.5"/>'
+    '<polyline points="21 15 16 10 5 21"/></svg>'
+)
 _PENCIL = (
     '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" '
     'stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'
@@ -195,11 +211,12 @@ def _render_nav(tree: dict, current_path: str | None) -> list[str]:
         )
     for _name, entry in files:
         active = ' class="active" aria-current="page"' if entry.url == current_path else ""
+        icon = _IMAGE_ICON if is_asset(entry.file_type) else _FILE_ICON
         # ``entry.label`` rather than the URL segment: a page is called
         # "Openapi", not "Openapi Json" — the file type is shown as a tag.
         lines.append(
             f'<a href="/{html.escape(entry.url, quote=True)}"{active}>'
-            f'{_FILE_ICON}<span class="label">{html.escape(entry.label)}</span></a>'
+            f'{icon}<span class="label">{html.escape(entry.label)}</span></a>'
         )
     return lines
 
@@ -346,7 +363,7 @@ def _page(
 async def index() -> HTMLResponse:
     _reload_if_config_changed()
     current = site()
-    documents = discover(current).documents
+    documents = discover(current).navigable
     return _page(
         current,
         documents,
@@ -389,7 +406,7 @@ async def render(url: str):
     footer = _build_edit_link(current, entry) + _build_raw_link(entry)
     return _page(
         current,
-        found.documents,
+        found.navigable,
         title=plain_title(body, entry.label),
         content=body,
         current_path=entry.url,
@@ -404,7 +421,7 @@ async def handle_404(request: Request, exc: HTTPException) -> HTMLResponse:
     path = html.escape(request.url.path)
     return _page(
         current,
-        discover(current).documents,
+        discover(current).navigable,
         title="Not found",
         content=(
             "<h1>404 &middot; Not found</h1>"
