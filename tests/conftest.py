@@ -23,6 +23,10 @@ def _isolate(monkeypatch, tmp_path):
     """Keep config, site and CI environment state from leaking between tests."""
     for key in _ENV_KEYS:
         monkeypatch.delenv(key, raising=False)
+    # ``_reload_if_config_changed`` rediscovers devdocs.yml from the working
+    # directory on every request, so a checkout-local config (and any config in
+    # a parent directory) would otherwise replace the config set up below.
+    monkeypatch.chdir(tmp_path)
     configure(Config(docs_dir=str(tmp_path / "docs"), config_dir=str(tmp_path)))
     set_site(None)
     yield
