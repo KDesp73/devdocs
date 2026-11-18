@@ -5,6 +5,7 @@ import os
 import sys
 from pathlib import Path
 
+from app import __version__
 from app.config import configure, load_config
 from app.site import Site
 from app.themes import theme_names
@@ -57,6 +58,12 @@ def _build_parser() -> argparse.ArgumentParser:
         "--reload",
         action="store_true",
         help="Enable auto-reload for development.",
+    )
+    parser.add_argument(
+        "-v",
+        "--version",
+        action="version",
+        version=f"%(prog)s {__version__}",
     )
     return parser
 
