@@ -12,6 +12,7 @@ from pathlib import Path
 import yaml
 
 CONFIG_FILENAMES = ("devdocs.yml", "devdocs.yaml", "devdocs.json")
+DOTENV_FILENAME = ".env"
 
 #: Set by the CLI so that ``--reload`` subprocesses inherit the overrides.
 ENV_CONFIG = "DEVDOCS_CONFIG"
@@ -82,6 +83,71 @@ class Config:
 YAML_FIELDS = frozenset(f.name for f in fields(Config)) - {"config_dir"}
 
 _global_cfg: Config | None = None
+_dotenv_loaded_from: str | None = None
+_dotenv_mtime_ns: int | None = None
+
+
+def _strip_dotenv_quotes(value: str) -> str:
+    value = value.strip()
+    if len(value) >= 2 and value[0] == value[-1] and value[0] in {'"', "'"}:
+        return value[1:-1]
+    # Remove inline comments for unquoted values (KEY=value # comment).
+    if " #" in value:
+        value = value.split(" #", 1)[0].rstrip()
+    return value
+
+
+def load_devdocs_dotenv(start: Path | str | None = None, *, force: bool = False) -> Path | None:
+    """Load ``DEVDOCS_*`` variables from a ``.env`` file in the working directory.
+
+    By default this reads ``.env`` from the current working directory and only
+    sets environment variables whose names start with ``DEVDOCS_``. Existing
+    environment variables are not overridden.
+    """
+    global _dotenv_loaded_from, _dotenv_mtime_ns
+
+    base = Path.cwd() if start is None else Path(start).expanduser()
+    if not base.is_absolute():
+        base = (Path.cwd() / base).resolve()
+    dotenv_path = (base / DOTENV_FILENAME).resolve()
+
+    try:
+        st = dotenv_path.stat()
+    except OSError:
+        if force:
+            _dotenv_loaded_from = None
+            _dotenv_mtime_ns = None
+        return None
+
+    key = str(dotenv_path)
+    mtime_ns = getattr(st, "st_mtime_ns", int(st.st_mtime * 1_000_000_000))
+    if not force and _dotenv_loaded_from == key and _dotenv_mtime_ns == mtime_ns:
+        return dotenv_path
+
+    try:
+        text = dotenv_path.read_text(encoding="utf-8")
+    except OSError:
+        return None
+
+    for raw_line in text.splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#"):
+            continue
+        if line.startswith("export "):
+            line = line[7:].lstrip()
+        if "=" not in line:
+            continue
+        name, value = line.split("=", 1)
+        name = name.strip()
+        if not name.startswith("DEVDOCS_"):
+            continue
+        if not re.match(r"^[A-Za-z_][A-Za-z0-9_]*$", name):
+            continue
+        os.environ.setdefault(name, _strip_dotenv_quotes(value))
+
+    _dotenv_loaded_from = key
+    _dotenv_mtime_ns = mtime_ns
+    return dotenv_path
 
 
 def configure(cfg: Config) -> None:
@@ -92,6 +158,7 @@ def configure(cfg: Config) -> None:
 def reload_config() -> Config:
     """Reload configuration from disk, ignoring any cached value."""
     global _global_cfg
+    load_devdocs_dotenv(force=True)
     _global_cfg = load_config()
     return _global_cfg
 
@@ -148,6 +215,7 @@ def _apply_env(cfg: Config) -> Config:
 
 def load_config(path: Path | str | None = None) -> Config:
     """Read a config file, falling back to defaults when there is none."""
+    load_devdocs_dotenv()
     if path is None:
         candidate = _find_config_file()
         if candidate is None:
@@ -193,3 +261,8 @@ def load_config(path: Path | str | None = None) -> Config:
 
     values["config_dir"] = str(config_file.resolve().parent)
     return _apply_env(Config(**values))
+
+
+# Load .env from the current working directory on import so early config/chat
+# reads see DEVDOCS_* values in CLI and app-server contexts.
+load_devdocs_dotenv()

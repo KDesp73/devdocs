@@ -15,6 +15,7 @@ import urllib.request
 from dataclasses import dataclass
 from typing import Any
 
+from app.config import load_devdocs_dotenv
 from app.search import get_index
 
 __all__ = ["chat_answer", "chat_enabled", "chat_status"]
@@ -99,6 +100,7 @@ def _probe_llm(cfg: dict[str, str]) -> bool:
 
 def chat_status(*, force: bool = False) -> dict[str, Any]:
     """Return whether chat is enabled/available and the active model if so."""
+    load_devdocs_dotenv()
     cfg = _llm_config()
     if not cfg:
         _chat_status_cache.update({"key": None, "ok": False, "ts": time.time(), "model": None})

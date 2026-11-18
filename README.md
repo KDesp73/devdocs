@@ -177,6 +177,11 @@ concise, source-linked answers.
 override the corresponding settings, which is what makes `--reload` pick up an
 edited `devdocs.yml` while keeping `--theme`/`--type` in effect.
 
+Devdocs also loads a `.env` file from the current working directory (if present)
+and reads `DEVDOCS_*` variables from it (existing process environment variables
+take precedence). This is useful for chat settings such as `DEVDOCS_LLM_API_KEY`,
+`DEVDOCS_LLM_BASE_URL`, and `DEVDOCS_LLM_MODEL`.
+
 ## Project Structure
 
 ```
