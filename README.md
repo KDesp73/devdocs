@@ -11,7 +11,7 @@ A lightweight documentation server that renders Markdown files as a styled websi
 - Collapsible folder tree sidebar with auto-expand for the current page
 - Breadcrumb navigation
 - Built-in documentation search in the UI: normal (keyword) and semantic modes
-- Docs-only assistant/chat panel grounded in published documentation (extractive by default, LLM-backed when configured)
+- Docs-only assistant/chat panel grounded in published documentation (enabled only when a reachable LLM endpoint is configured)
 - Mermaid diagram support: diagrams are rendered at their natural size instead of being
   squeezed into the page width, and can be opened in a zoomable/panable viewer
 - "Edit on GitHub" links that follow the branch you actually have checked out
@@ -148,17 +148,21 @@ The UI includes:
 
 - **Normal search**: keyword-based search over published Markdown docs
 - **Semantic search**: relevance-ranked search mode for natural-language queries
-- **Chat**: a docs-only assistant that retrieves relevant documentation chunks and answers from them
+- **Chat**: a docs-only assistant that retrieves relevant documentation chunks and answers from them (shown only when configured and available)
 
-Chat is grounded in your published docs. If an OpenAI-compatible LLM endpoint is configured,
-responses are generated from retrieved doc excerpts; otherwise devdocs returns an extractive,
-source-linked answer from the docs.
+Chat is grounded in your published docs and uses a configured OpenAI-compatible LLM endpoint.
+When chat is not configured or the endpoint is not reachable, the chat mode/API is disabled.
 
-Optional environment variables for LLM-backed chat:
+Environment variables for chat:
 
-- `DEVDOCS_LLM_API_KEY` (or `OPENAI_API_KEY`)
+- `DEVDOCS_LLM_API_KEY` (or `OPENAI_API_KEY`) — required
 - `DEVDOCS_LLM_BASE_URL` (or `OPENAI_BASE_URL`, default `https://api.openai.com/v1`)
 - `DEVDOCS_LLM_MODEL` (default `gpt-4o-mini`)
+
+For local Ollama, use an OpenAI-compatible endpoint such as `http://localhost:11434/v1`
+and a pulled model name (e.g. `llama3.1`). A placeholder API key value like `ollama`
+can be used if needed. When enabled, the chat UI displays the active model and returns
+concise, source-linked answers.
 
 ### Naming and style conventions
 

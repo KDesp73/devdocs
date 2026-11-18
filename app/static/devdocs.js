@@ -5,7 +5,7 @@
 (function () {
   "use strict";
 
-  var config = { mermaid: { theme: "neutral" } };
+  var config = { mermaid: { theme: "neutral" }, chat: { enabled: false, model: null } };
   var configEl = document.getElementById("devdocs-config");
   if (configEl) {
     try {
@@ -13,6 +13,9 @@
       if (parsed && typeof parsed === "object") {
         if (parsed.mermaid) {
           config.mermaid = Object.assign(config.mermaid, parsed.mermaid);
+        }
+        if (parsed.chat) {
+          config.chat = Object.assign(config.chat, parsed.chat);
         }
       }
     } catch (err) {
@@ -46,6 +49,21 @@
   var searchMode = "normal";
   var searchTimer = null;
   var chatHistory = [];
+  var chatEnabled = !!(config.chat && config.chat.enabled);
+  var chatModel = config.chat && config.chat.model ? String(config.chat.model) : null;
+
+  if (chatEnabled) {
+    var modes = document.querySelector(".doc-search-modes");
+    if (modes && !modes.querySelector('[data-mode="chat"]')) {
+      var chatBtn = document.createElement("button");
+      chatBtn.type = "button";
+      chatBtn.className = "mode-btn";
+      chatBtn.setAttribute("data-mode", "chat");
+      chatBtn.textContent = "Chat";
+      modes.appendChild(chatBtn);
+      modeButtons = document.querySelectorAll(".mode-btn[data-mode]");
+    }
+  }
 
   function esc(text) {
     return String(text == null ? "" : text)
@@ -57,6 +75,9 @@
 
   function setMode(mode) {
     searchMode = mode || "normal";
+    if (searchMode === "chat" && !chatEnabled) {
+      searchMode = "normal";
+    }
     Array.prototype.forEach.call(modeButtons, function (btn) {
       btn.classList.toggle("active", btn.getAttribute("data-mode") === searchMode);
     });
@@ -121,10 +142,30 @@
       });
   }
 
+  function disableChat(message) {
+    chatEnabled = false;
+    chatModel = null;
+    var chatBtn = document.querySelector('.mode-btn[data-mode="chat"]');
+    if (chatBtn && chatBtn.parentNode) chatBtn.parentNode.removeChild(chatBtn);
+    modeButtons = document.querySelectorAll(".mode-btn[data-mode]");
+    if (searchMode === "chat") {
+      setMode("normal");
+    }
+    if (message) {
+      showPanel('<div class="chat-meta">' + esc(message) + "</div>");
+    }
+  }
+
   function renderChatPrompt() {
+    if (!chatEnabled) {
+      showPanel('<div class="chat-meta">Chat is unavailable.</div>');
+      return;
+    }
+    var meta = chatModel ? ("Model: " + chatModel) : "Docs-only chat";
     showPanel(
       '<div class="chat-box">' +
-        '<div class="chat-meta">Ask a question and get an answer grounded in the published docs.</div>' +
+        '<div class="chat-meta">' + esc(meta) + "</div>" +
+        '<div class="chat-meta">Ask a question about the published docs.</div>' +
         '<div class="chat-actions"><button type="button" id="chat-ask-btn">Ask</button></div>' +
       "</div>"
     );
@@ -133,10 +174,21 @@
   }
 
   function renderChatAnswer(data, question) {
+    if (!chatEnabled || (data && data.enabled === false) || (data && data.mode === "disabled")) {
+      disableChat((data && data.answer) || "Chat is unavailable.");
+      return;
+    }
     var sources = (data && data.sources) || [];
+    var mode = (data && data.mode) || "llm";
+    var model = (data && data.model) || chatModel;
+    if (model) chatModel = model;
+    var meta = model ? ("Model: " + model) : (mode === "llm" ? "Docs-only chat" : "");
     var html = '<div class="chat-box">';
     if (question) {
       html += '<div class="chat-meta"><strong>You:</strong> ' + esc(question) + "</div>";
+    }
+    if (meta) {
+      html += '<div class="chat-meta">' + esc(meta) + "</div>";
     }
     html += '<div class="chat-answer">' + esc((data && data.answer) || "No answer.").replace(/\n/g, "\n") + "</div>";
     if (sources.length) {
@@ -155,7 +207,7 @@
   }
 
   function runChat() {
-    if (!searchInput) return;
+    if (!chatEnabled || !searchInput) return;
     var q = searchInput.value.trim();
     if (!q) {
       renderChatPrompt();
@@ -167,15 +219,25 @@
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ question: q, history: chatHistory.slice(-6) }),
     })
-      .then(function (res) { return res.json(); })
+      .then(function (res) {
+        if (!res.ok) {
+          return res.json().catch(function () { return { enabled: false, mode: "disabled", answer: "Chat is unavailable." }; })
+            .then(function (data) { data._httpError = true; return data; });
+        }
+        return res.json();
+      })
       .then(function (data) {
+        if (!chatEnabled || (data && (data.enabled === false || data.mode === "disabled" || data._httpError))) {
+          disableChat((data && data.answer) || "Chat is unavailable.");
+          return;
+        }
         chatHistory.push({ role: "user", content: q });
         chatHistory.push({ role: "assistant", content: (data && data.answer) || "" });
         if (chatHistory.length > 12) chatHistory = chatHistory.slice(-12);
         renderChatAnswer(data || {}, q);
       })
       .catch(function () {
-        showPanel('<div class="chat-meta">Chat request failed.</div>');
+        disableChat("Chat is unavailable.");
       });
   }
 

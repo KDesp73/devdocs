@@ -466,12 +466,31 @@ async def api_search(q: str = "", mode: str = "normal", limit: int = 10):
     return {"query": query, "mode": "semantic" if mode == "semantic" else "normal", "results": payload}
 
 
+async def _chat_disabled_response():
+    return HTMLResponse(
+        '{"error":"Chat is not available","enabled":false}',
+        status_code=503,
+        media_type="application/json",
+    )
+
+
+@app.get("/api/chat/status")
+async def api_chat_status():
+    _reload_if_config_changed()
+    from app.chat import chat_status
+
+    return chat_status()
+
+
 @app.get("/api/chat")
 async def api_chat_get(q: str = ""):
     _reload_if_config_changed()
     current = site()
-    from app.chat import chat_answer
+    from app.chat import chat_answer, chat_status
 
+    status = chat_status()
+    if not status.get("enabled"):
+        return await _chat_disabled_response()
     return chat_answer(current, q)
 
 
@@ -479,6 +498,11 @@ async def api_chat_get(q: str = ""):
 async def api_chat_post(request: Request):
     _reload_if_config_changed()
     current = site()
+    from app.chat import chat_answer, chat_status
+
+    status = chat_status()
+    if not status.get("enabled"):
+        return await _chat_disabled_response()
     try:
         body = await request.json()
     except Exception:
@@ -492,8 +516,6 @@ async def api_chat_post(request: Request):
             history = [x for x in h if isinstance(x, dict)]
     if not question:
         question = (request.query_params.get("q") or "").strip()
-    from app.chat import chat_answer
-
     return chat_answer(current, question, history=history)
 
 

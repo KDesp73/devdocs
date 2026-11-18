@@ -75,7 +75,18 @@ def page(
 ) -> str:
     """Assemble a full HTML document."""
     document_title = html.escape(f"{title} — {site_name} Docs")
-    client_config = json.dumps({"mermaid": {"theme": mermaid_theme, "url": MERMAID_CDN}})
+    from app.chat import chat_status
+
+    status = chat_status()
+    client_config = json.dumps(
+        {
+            "mermaid": {"theme": mermaid_theme, "url": MERMAID_CDN},
+            "chat": {
+                "enabled": bool(status.get("enabled")),
+                "model": status.get("model"),
+            },
+        }
+    )
     return f"""<!DOCTYPE html>
 <html lang="en" data-theme="{html.escape(theme)}">
 <head>
@@ -100,7 +111,6 @@ def page(
     <div class="doc-search-modes" role="tablist" aria-label="Search mode">
       <button type="button" class="mode-btn active" data-mode="normal">Normal</button>
       <button type="button" class="mode-btn" data-mode="semantic">Semantic</button>
-      <button type="button" class="mode-btn" data-mode="chat">Chat</button>
     </div>
     <div id="doc-search-panel" class="doc-search-panel" hidden></div>
   </div>
