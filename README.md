@@ -7,8 +7,11 @@ A lightweight documentation server that renders Markdown files as a styled websi
 - Markdown rendering with syntax highlighting (Pygments) and line numbers for source files
 - Pretty labels everywhere: `NativeBackendSetup.md` shows up as **Native Backend Setup**,
   `getting-started/` as **Getting Started**, `apiReference.md` as **API Reference**
+- Optional YAML front matter for page metadata (title, description, tags, order, draft/hidden)
 - Collapsible folder tree sidebar with auto-expand for the current page
 - Breadcrumb navigation
+- Built-in documentation search in the UI: normal (keyword) and semantic modes
+- Docs-only assistant/chat panel grounded in published documentation (extractive by default, LLM-backed when configured)
 - Mermaid diagram support: diagrams are rendered at their natural size instead of being
   squeezed into the page width, and can be opened in a zoomable/panable viewer
 - "Edit on GitHub" links that follow the branch you actually have checked out
@@ -115,6 +118,54 @@ without their extension (`/guides/setup`); other documents keep theirs
 Images are the exception: they are served at their real path, so linking
 `![diagram](./assets/flow.png)` just works, and they get their own image icon in
 the tree rather than a rendered page.
+
+### Document front matter (custom format)
+
+Markdown pages may include an optional YAML-style header at the top of the file:
+
+```md
+---
+title: Getting Started
+description: Install and run devdocs locally.
+tags: [setup, intro]
+order: 10
+sidebar_label: Getting Started
+---
+
+# Getting Started
+
+...
+```
+
+Supported fields include `title`, `description`/`summary`, `tags`, `order`/`weight`,
+`sidebar_label`/`label`, `draft`, and `hidden`. Front matter is used for navigation,
+index cards, and search metadata while the page body is rendered as normal Markdown.
+Invalid or non-mapping headers are ignored so existing documents continue to work.
+
+### Search and docs-only chat
+
+The UI includes:
+
+- **Normal search**: keyword-based search over published Markdown docs
+- **Semantic search**: relevance-ranked search mode for natural-language queries
+- **Chat**: a docs-only assistant that retrieves relevant documentation chunks and answers from them
+
+Chat is grounded in your published docs. If an OpenAI-compatible LLM endpoint is configured,
+responses are generated from retrieved doc excerpts; otherwise devdocs returns an extractive,
+source-linked answer from the docs.
+
+Optional environment variables for LLM-backed chat:
+
+- `DEVDOCS_LLM_API_KEY` (or `OPENAI_API_KEY`)
+- `DEVDOCS_LLM_BASE_URL` (or `OPENAI_BASE_URL`, default `https://api.openai.com/v1`)
+- `DEVDOCS_LLM_MODEL` (default `gpt-4o-mini`)
+
+### Naming and style conventions
+
+- Use consistent, descriptive file and folder names (recommended: `kebab-case`), e.g. `getting-started/install.md`
+- devdocs prettifies names for display (`getting-started` → **Getting Started**, `APIReference` → **API Reference**)
+- Prefer a single top-level `# Heading` per page, or set `title` in front matter for explicit control
+- Use `order` to control navigation/index ordering within a section; use `draft: true` or `hidden: true` to keep work-in-progress pages out of navigation
 
 ### Environment variables
 

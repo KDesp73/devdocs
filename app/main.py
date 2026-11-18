@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import html
 import warnings
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Request
@@ -13,6 +13,7 @@ from fastapi.staticfiles import StaticFiles
 
 from app import templates
 from app.config import get_config, reload_config
+from app.frontmatter import DocumentMeta, read_frontmatter
 from app.naming import prettify
 from app.render import (
     FileType,
@@ -80,6 +81,12 @@ def _reload_if_config_changed() -> None:
             new_cfg = reload_config()
             new_site = build_site(new_cfg)
             set_site(new_site)
+            try:
+                from app.search import invalidate_index
+
+                invalidate_index()
+            except Exception:
+                pass
             _config_path = cfg_path
             _config_mtime = mtime
         except Exception as exc:
@@ -95,10 +102,33 @@ class Entry:
     rel: str
     path: Path
     file_type: FileType
+    meta: DocumentMeta = field(default_factory=DocumentMeta)
 
     @property
     def label(self) -> str:
-        return prettify(self.path.stem)
+        return self.meta.nav_title or prettify(self.path.stem)
+
+    @property
+    def display_title(self) -> str:
+        if self.meta.title:
+            return self.meta.title
+        if self.file_type.kind == "markdown":
+            heading = first_heading(self.path)
+            if heading:
+                return heading
+        return self.label
+
+    @property
+    def order(self) -> float | None:
+        return self.meta.order
+
+    @property
+    def description(self) -> str:
+        return self.meta.description
+
+    @property
+    def tags(self) -> list[str]:
+        return list(self.meta.tags)
 
 
 @dataclass(frozen=True)
@@ -128,6 +158,11 @@ def _url_for(rel: str, file_type: FileType) -> str:
     return rel
 
 
+def _sort_key(entry: Entry) -> tuple[int, float, str]:
+    order = entry.order
+    return (0 if order is not None else 1, order if order is not None else 0.0, entry.label.lower())
+
+
 def discover(current: Site) -> Discovery:
     """Walk the docs directory, honouring ignore rules and file types."""
     documents: dict[str, Entry] = {}
@@ -150,7 +185,12 @@ def discover(current: Site) -> Discovery:
         file_type = classify(path.suffix, current.types)
         if file_type is None:
             continue
-        entry = Entry(_url_for(rel, file_type), rel, path, file_type)
+        meta = DocumentMeta()
+        if file_type.kind == "markdown":
+            meta = DocumentMeta(read_frontmatter(path))
+            if not meta.visible:
+                continue
+        entry = Entry(_url_for(rel, file_type), rel, path, file_type, meta)
         (assets if is_asset(file_type) else documents)[entry.url] = entry
     return Discovery(documents, assets)
 
@@ -190,7 +230,7 @@ def _render_nav(tree: dict, current_path: str | None) -> list[str]:
     folders = sorted((name, node) for name, node in tree.items() if isinstance(node, dict))
     files = sorted(
         ((name, node) for name, node in tree.items() if not isinstance(node, dict)),
-        key=lambda item: item[0].lower(),
+        key=lambda item: _sort_key(item[1]),
     )
     lines: list[str] = []
     for name, node in folders:
@@ -287,14 +327,28 @@ def _build_raw_link(entry: Entry) -> str:
 
 def _document_body(entry: Entry) -> str:
     if entry.file_type.kind == "markdown":
-        return render_document(entry.path, entry.file_type)
+        body = render_document(entry.path, entry.file_type)
+        # If front matter provided a title/description and body doesn't start with h1, show meta header.
+        if entry.meta.title and not body.lstrip().startswith("<h1"):
+            header = f"<h1>{html.escape(entry.meta.title)}</h1>"
+            if entry.description:
+                header += f'<p class="doc-lead">{html.escape(entry.description)}</p>'
+            if entry.tags:
+                chips = "".join(
+                    f'<span class="chip">{html.escape(tag)}</span>' for tag in entry.tags
+                )
+                header += f'<div class="doc-tags">{chips}</div>'
+            return header + body
+        return body
     header = (
-        f"<h1>{html.escape(entry.label)}</h1>"
+        f"<h1>{html.escape(entry.display_title)}</h1>"
         '<div class="doc-meta">'
         f'<span class="path">{html.escape(entry.rel)}</span>'
         f'<span class="tag">{html.escape(language_label(entry.path, entry.file_type))}</span>'
         "</div>"
     )
+    if entry.description:
+        header += f'<p class="doc-lead">{html.escape(entry.description)}</p>'
     return header + render_document(entry.path, entry.file_type)
 
 
@@ -314,13 +368,23 @@ def _build_index(current: Site, documents: dict[str, Entry]) -> str:
         if key:
             sections.append(f'<div class="index-section">{html.escape(prettify(key))}</div>')
         sections.append('<div class="index-grid">')
-        for entry in sorted(groups[key], key=lambda item: item.url):
-            label = first_heading(entry.path) if entry.file_type.kind == "markdown" else entry.label
-            label = label or entry.label
+        for entry in sorted(groups[key], key=_sort_key):
+            label = entry.display_title or entry.label
+            desc = entry.description
+            tags = entry.tags
+            meta_html = ""
+            if desc:
+                meta_html += f'<div class="desc">{html.escape(desc)}</div>'
+            if tags:
+                chips = "".join(
+                    f'<span class="chip">{html.escape(tag)}</span>' for tag in tags[:4]
+                )
+                meta_html += f'<div class="chips">{chips}</div>'
             sections.append(
                 f'<a href="/{html.escape(entry.url, quote=True)}" class="index-card">'
                 f'<div class="title">{html.escape(label)}</div>'
                 f'<div class="path">/{html.escape(entry.url)}</div>'
+                f"{meta_html}"
                 f"</a>"
             )
         sections.append("</div>")
@@ -382,6 +446,55 @@ async def raw_file(url: str) -> FileResponse:
         media_type=media_type(entry.path),
         headers=dict(_ASSET_HEADERS),
     )
+
+
+@app.get("/api/search")
+async def api_search(q: str = "", mode: str = "normal", limit: int = 10):
+    _reload_if_config_changed()
+    current = site()
+    limit = max(1, min(int(limit or 10), 30))
+    query = (q or "").strip()
+    from app.search import get_index
+
+    index = get_index(current)
+    hits = index.search(query, limit=limit, mode=mode)
+    payload = []
+    for h in hits:
+        item = h.to_dict()
+        item["url"] = "/" + h.url if not h.url.startswith("/") else h.url
+        payload.append(item)
+    return {"query": query, "mode": "semantic" if mode == "semantic" else "normal", "results": payload}
+
+
+@app.get("/api/chat")
+async def api_chat_get(q: str = ""):
+    _reload_if_config_changed()
+    current = site()
+    from app.chat import chat_answer
+
+    return chat_answer(current, q)
+
+
+@app.post("/api/chat")
+async def api_chat_post(request: Request):
+    _reload_if_config_changed()
+    current = site()
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+    question = ""
+    history = None
+    if isinstance(body, dict):
+        question = str(body.get("question") or body.get("q") or body.get("message") or "").strip()
+        h = body.get("history")
+        if isinstance(h, list):
+            history = [x for x in h if isinstance(x, dict)]
+    if not question:
+        question = (request.query_params.get("q") or "").strip()
+    from app.chat import chat_answer
+
+    return chat_answer(current, question, history=history)
 
 
 @app.get("/{url:path}", response_class=HTMLResponse)

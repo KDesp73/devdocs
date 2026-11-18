@@ -95,6 +95,15 @@ def page(
 {_topbar(site_name, tagline, branch)}
 <div class="wrapper">
 <nav aria-label="Documentation">
+  <div class="nav-tools">
+    <input id="doc-search-input" class="doc-search-input" type="search" placeholder="Search docs…" aria-label="Search documentation">
+    <div class="doc-search-modes" role="tablist" aria-label="Search mode">
+      <button type="button" class="mode-btn active" data-mode="normal">Normal</button>
+      <button type="button" class="mode-btn" data-mode="semantic">Semantic</button>
+      <button type="button" class="mode-btn" data-mode="chat">Chat</button>
+    </div>
+    <div id="doc-search-panel" class="doc-search-panel" hidden></div>
+  </div>
   <a href="/" class="{root_active}">{_HOME_ICON} <span class="label">Home</span></a>
 {nav_links}
 </nav>

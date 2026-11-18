@@ -38,6 +38,175 @@
   }
 
   /* ------------------------------------------------------------------ */
+  /* search + chat                                                       */
+  /* ------------------------------------------------------------------ */
+  var searchInput = document.getElementById("doc-search-input");
+  var searchPanel = document.getElementById("doc-search-panel");
+  var modeButtons = document.querySelectorAll(".mode-btn[data-mode]");
+  var searchMode = "normal";
+  var searchTimer = null;
+  var chatHistory = [];
+
+  function esc(text) {
+    return String(text == null ? "" : text)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+  }
+
+  function setMode(mode) {
+    searchMode = mode || "normal";
+    Array.prototype.forEach.call(modeButtons, function (btn) {
+      btn.classList.toggle("active", btn.getAttribute("data-mode") === searchMode);
+    });
+    if (searchInput) {
+      if (searchMode === "chat") {
+        searchInput.placeholder = "Ask a question about the docs…";
+      } else if (searchMode === "semantic") {
+        searchInput.placeholder = "Semantic search…";
+      } else {
+        searchInput.placeholder = "Search docs…";
+      }
+    }
+    if (searchMode === "chat") {
+      renderChatPrompt();
+    } else if (searchInput && searchInput.value.trim()) {
+      runSearch(searchInput.value.trim());
+    } else if (searchPanel) {
+      searchPanel.hidden = true;
+      searchPanel.textContent = "";
+    }
+  }
+
+  function showPanel(html) {
+    if (!searchPanel) return;
+    searchPanel.innerHTML = html;
+    searchPanel.hidden = false;
+  }
+
+  function renderSearchResults(data) {
+    var results = (data && data.results) || [];
+    if (!results.length) {
+      showPanel('<div class="chat-meta">No matching documentation found.</div>');
+      return;
+    }
+    var html = '<div class="search-results">';
+    results.forEach(function (r) {
+      html +=
+        '<a class="search-result" href="' + esc(r.url || "/") + '">' +
+        '<div class="title">' + esc(r.title || r.url || "Untitled") + "</div>" +
+        (r.excerpt ? '<div class="excerpt">' + esc(r.excerpt) + "</div>" : "") +
+        '<div class="path">' + esc(r.url || "") + (r.heading ? " · " + esc(r.heading) : "") + "</div>" +
+        "</a>";
+    });
+    html += "</div>";
+    showPanel(html);
+  }
+
+  function runSearch(query) {
+    if (!query) {
+      if (searchPanel) {
+        searchPanel.hidden = true;
+        searchPanel.textContent = "";
+      }
+      return;
+    }
+    if (searchMode === "chat") return;
+    fetch("/api/search?q=" + encodeURIComponent(query) + "&mode=" + encodeURIComponent(searchMode) + "&limit=8")
+      .then(function (res) { return res.json(); })
+      .then(renderSearchResults)
+      .catch(function () {
+        showPanel('<div class="chat-meta">Search failed.</div>');
+      });
+  }
+
+  function renderChatPrompt() {
+    showPanel(
+      '<div class="chat-box">' +
+        '<div class="chat-meta">Ask a question and get an answer grounded in the published docs.</div>' +
+        '<div class="chat-actions"><button type="button" id="chat-ask-btn">Ask</button></div>' +
+      "</div>"
+    );
+    var askBtn = document.getElementById("chat-ask-btn");
+    if (askBtn) askBtn.addEventListener("click", runChat);
+  }
+
+  function renderChatAnswer(data, question) {
+    var sources = (data && data.sources) || [];
+    var html = '<div class="chat-box">';
+    if (question) {
+      html += '<div class="chat-meta"><strong>You:</strong> ' + esc(question) + "</div>";
+    }
+    html += '<div class="chat-answer">' + esc((data && data.answer) || "No answer.").replace(/\n/g, "\n") + "</div>";
+    if (sources.length) {
+      html += '<div class="chat-sources"><div class="chat-meta"><strong>Sources</strong></div>';
+      sources.forEach(function (s) {
+        html += '<div class="chat-source"><a href="' + esc(s.url || "/") + '">' + esc(s.title || s.url || "Source") + "</a>" +
+          (s.heading ? " · " + esc(s.heading) : "") + "</div>";
+      });
+      html += "</div>";
+    }
+    html += '<div class="chat-actions"><button type="button" id="chat-ask-btn">Ask again</button></div>';
+    html += "</div>";
+    showPanel(html.replace(/\n/g, "<br>"));
+    var askBtn = document.getElementById("chat-ask-btn");
+    if (askBtn) askBtn.addEventListener("click", runChat);
+  }
+
+  function runChat() {
+    if (!searchInput) return;
+    var q = searchInput.value.trim();
+    if (!q) {
+      renderChatPrompt();
+      return;
+    }
+    showPanel('<div class="chat-meta">Searching documentation…</div>');
+    fetch("/api/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ question: q, history: chatHistory.slice(-6) }),
+    })
+      .then(function (res) { return res.json(); })
+      .then(function (data) {
+        chatHistory.push({ role: "user", content: q });
+        chatHistory.push({ role: "assistant", content: (data && data.answer) || "" });
+        if (chatHistory.length > 12) chatHistory = chatHistory.slice(-12);
+        renderChatAnswer(data || {}, q);
+      })
+      .catch(function () {
+        showPanel('<div class="chat-meta">Chat request failed.</div>');
+      });
+  }
+
+  Array.prototype.forEach.call(modeButtons, function (btn) {
+    btn.addEventListener("click", function () {
+      setMode(btn.getAttribute("data-mode") || "normal");
+    });
+  });
+  if (searchInput) {
+    searchInput.addEventListener("input", function () {
+      if (searchTimer) window.clearTimeout(searchTimer);
+      if (searchMode === "chat") return;
+      var q = searchInput.value.trim();
+      searchTimer = window.setTimeout(function () { runSearch(q); }, 180);
+    });
+    searchInput.addEventListener("keydown", function (event) {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        if (searchMode === "chat") runChat();
+        else runSearch(searchInput.value.trim());
+      } else if (event.key === "Escape") {
+        searchInput.value = "";
+        if (searchPanel) {
+          searchPanel.hidden = true;
+          searchPanel.textContent = "";
+        }
+      }
+    });
+  }
+
+  /* ------------------------------------------------------------------ */
   /* mermaid                                                             */
   /* ------------------------------------------------------------------ */
   var nodes = document.querySelectorAll(".mermaid");

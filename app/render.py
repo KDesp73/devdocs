@@ -22,6 +22,8 @@ from pygments.formatters import HtmlFormatter
 from pygments.lexers import TextLexer, get_lexer_for_filename
 from pygments.util import ClassNotFound
 
+from app.frontmatter import load_document, split_frontmatter
+
 __all__ = [
     "FileType",
     "ResolvedTypes",
@@ -260,28 +262,30 @@ def _rewrite_doc_links(rendered: str) -> str:
 
 def render_markdown(path: Path) -> str:
     """Render a Markdown file to an HTML fragment."""
-    raw = path.read_text(encoding="utf-8", errors="replace")
+    _meta, body, _raw = load_document(path)
     rendered = markdown.markdown(
-        _prepare_mermaid(raw),
+        _prepare_mermaid(body),
         extensions=MARKDOWN_EXTENSIONS,
         extension_configs={"codehilite": {"css_class": "codehilite"}},
     )
     return _rewrite_doc_links(rendered)
 
 
+def _first_heading_in_text(text: str) -> str | None:
+    for line in text.splitlines()[:_HEADING_SCAN_LINES]:
+        if line.startswith("# ") or line.startswith("#\t"):
+            return line.lstrip("# \t").strip()
+    return None
+
+
 def first_heading(path: Path) -> str | None:
     """Read the first level 1 Markdown heading without rendering the file."""
     try:
-        with path.open("r", encoding="utf-8", errors="replace") as handle:
-            for _ in range(_HEADING_SCAN_LINES):
-                line = handle.readline()
-                if not line:
-                    break
-                if line.startswith("# ") or line.startswith("#\t"):
-                    return line.lstrip("# \t").strip()
+        raw = path.read_text(encoding="utf-8", errors="replace")
     except OSError:
         return None
-    return None
+    _data, body = split_frontmatter(raw)
+    return _first_heading_in_text(body)
 
 
 @lru_cache(maxsize=128)
